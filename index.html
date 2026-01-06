@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskMaster - Advanced Task Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="taskmaster.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <h1>TaskMaster</h1>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" id="themeToggle" aria-label="toggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon total">
+                    <i class="fas fa-list-check"></i>
+                </div>
+                <div class="stat-details">
+                    <h3 id="totalTasks">0</h3>
+                    <p>Total Tasks</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon completed">
+                    <i class="fas fa-circle-check"></i>
+                </div>
+                <div class="stat-details">
+                    <h3 id="completedTasks">0</h3>
+                    <p>Completed</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon pending">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-details">
+                    <h3 id="pendingTasks">0</h3>
+                    <p>Pending</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon overdue">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-details">
+                    <h3 id="overdueTasks">0</h3>
+                    <p>Overdue</p>
+                </div>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="sidebar">
+                <button class="add-task-btn" id="addTaskBtn">
+                    <i class="fas fa-plus"></i>
+                    Add New Task
+                </button>
+
+                <div class="filter-section">
+                    <h3>Filters</h3>
+                    <div class="filter-item active" data-filter="all">
+                        <div class="filter-label">
+                            <i class="fas fa-border-all"></i>
+                            <span>All Tasks</span>
+                        </div>
+                        <span class="filter-count" id="filterAllCount">0</span>
+                    </div>
+                    <div class="filter-item" data-filter="pending">
+                        <div class="filter-label">
+                            <i class="fas fa-spinner"></i>
+                            <span>Pending</span>
+                        </div>
+                        <span class="filter-count" id="filterPendingCount">0</span>
+                    </div>
+                    <div class="filter-item" data-filter="completed">
+                        <div class="filter-label">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Completed</span>
+                        </div>
+                        <span class="filter-count" id="filterCompletedCount">0</span>
+                    </div>
+                    <div class="filter-item" data-filter="high">
+                        <div class="filter-label">
+                            <i class="fas fa-flag"></i>
+                            <span>High Priority</span>
+                        </div>
+                        <span class="filter-count" id="filterHighCount">0</span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="search-bar">
+                    <div class="search-input-wrapper">
+                        <input type="text" class="search-input" id="searchInput" placeholder="Search tasks...">
+                        <i class="fas fa-search search-icon"></i>
+                    </div>
+                </div>
+
+                <div class="tasks-container">
+                    <div class="tasks-header">
+                        <h2 id="tasksTitle">All Tasks</h2>
+                        <select class="sort-dropdown" id="sortDropdown" title="o">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="priority">Priority</option>
+                            <option value="dueDate">Due Date</option>
+                        </select>
+                    </div>
+                    <div id="tasksList">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Task</h2>
+                <button class="modal-close" id="modalClose" aria-label="close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label for="taskTitle">Task Title *</label>
+                    <input type="text" id="taskTitle" required placeholder="Enter task title">
+                </div>
+                <div class="form-group">
+                    <label for="taskDescription">Description</label>
+                    <textarea id="taskDescription" placeholder="Enter task description (optional)"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="taskPriority">Priority *</label>
+                    <select id="taskPriority" required>
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskDueDate">Due Date</label>
+                    <input type="date" id="taskDueDate">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveBtn">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container">
+    </div>
+
+    <script>
+        class TaskManager {
+            constructor() {
+                this.tasks = this.loadTasks();
+                this.currentFilter = 'all';
+                this.editingTaskId = null;
+                this.init();
+            }
+
+            init() {
+                this.renderTasks();
+                this.updateStats();
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                document.getElementById('addTaskBtn').addEventListener('click', () => this.openModal());
+                document.getElementById('modalClose').addEventListener('click', () => this.closeModal());
+                document.getElementById('cancelBtn').addEventListener('click', () => this.closeModal());
+                document.getElementById('taskForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.saveTask();
+                });
+
+                document.querySelectorAll('.filter-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        document.querySelectorAll('.filter-item').forEach(i => i.classList.remove('active'));
+                        item.classList.add('active');
+                        this.currentFilter = item.dataset.filter;
+                        this.renderTasks();
+                        document.getElementById('tasksTitle').textContent = 
+                            item.querySelector('span').textContent;
+                    });
+                });
+                document.getElementById('searchInput').addEventListener('input', (e) => {
+                    this.searchTasks(e.target.value);
+                });
+                document.getElementById('sortDropdown').addEventListener('change', (e) => {
+                    this.sortTasks(e.target.value);
+                });
+                document.getElementById('taskModal').addEventListener('click', (e) => {
+                    if (e.target.id === 'taskModal') this.closeModal();
+                });
+            }
+
+            loadTasks() {
+                const tasks = localStorage.getItem('taskmaster_tasks');
+                return tasks ? JSON.parse(tasks) : [];
+            }
+
+            saveTasks() {
+                localStorage.setItem('taskmaster_tasks', JSON.stringify(this.tasks));
+            }
+
+            openModal(taskId = null) {
+                const modal = document.getElementById('taskModal');
+                const form = document.getElementById('taskForm');
+                
+                if (taskId) {
+                    this.editingTaskId = taskId;
+                    const task = this.tasks.find(t => t.id === taskId);
+                    document.getElementById('modalTitle').textContent = 'Edit Task';
+                    document.getElementById('taskTitle').value = task.title;
+                    document.getElementById('taskDescription').value = task.description || '';
+                    document.getElementById('taskPriority').value = task.priority;
+                    document.getElementById('taskDueDate').value = task.dueDate || '';
+                } else {
+                    this.editingTaskId = null;
+                    document.getElementById('modalTitle').textContent = 'Add New Task';
+                    form.reset();
+                }
+                
+                modal.classList.add('active');
+            }
+
+            closeModal() {
+                document.getElementById('taskModal').classList.remove('active');
+                document.getElementById('taskForm').reset();
+                this.editingTaskId = null;
+            }
+
+            saveTask() {
+                const title = document.getElementById('taskTitle').value.trim();
+                const description = document.getElementById('taskDescription').value.trim();
+                const priority = document.getElementById('taskPriority').value;
+                const dueDate = document.getElementById('taskDueDate').value;
+
+                if (!title) return;
+
+                if (this.editingTaskId) {
+                    const taskIndex = this.tasks.findIndex(t => t.id === this.editingTaskId);
+                    this.tasks[taskIndex] = {
+                        ...this.tasks[taskIndex],
+                        title,
+                        description,
+                        priority,
+                        dueDate
+                    };
+                } else {
+                    const task = {
+                        id: Date.now(),
+                        title,
+                        description,
+                        priority,
+                        dueDate,
+                        completed: false,
+                        createdAt: new Date().toISOString()
+                    };
+                    this.tasks.unshift(task);
+                }
+
+                this.saveTasks();
+                this.renderTasks();
+                this.updateStats();
+                this.closeModal();
+                showToast(this.editingTaskId ? "Task updated successfully!" : "Task created successfully!", "success");
+            }
+
+            deleteTask(taskId) {
+                const confirmToast = document.createElement('div');
+                confirmToast.className = 'toast danger';
+                confirmToast.innerHTML = `
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div class="toast-body">Are you sure? This action cannot be undone.</div>
+                    <button class="btn btn-sm btn-danger ml-2" onclick="taskManager.confirmDelete(${taskId})">Yes, Delete</button>
+                    <button class="btn btn-sm btn-secondary ml-2" onclick="this.closest('.toast').remove()">Cancel</button>
+                `;
+                
+                document.getElementById('toastContainer').appendChild(confirmToast);
+                confirmToast.classList.add('show');
+                setTimeout(() => {
+                    if (confirmToast.parentNode) {
+                        confirmToast.classList.remove('show');
+                        setTimeout(() => {
+                            if (confirmToast.parentNode) {
+                                confirmToast.parentNode.removeChild(confirmToast);
+                            }
+                        }, 300);
+                    }
+                }, 5000);
+            }
+
+            confirmDelete(taskId) {
+                this.tasks = this.tasks.filter(t => t.id !== taskId);
+                this.saveTasks();
+                this.renderTasks();
+                this.updateStats();
+                
+                showToast("Task deleted successfully!", "success");
+                const confirmToast = document.querySelector('.toast.danger:not(.success)');
+                if (confirmToast) {
+                    confirmToast.classList.remove('show');
+                    setTimeout(() => {
+                        if (confirmToast.parentNode) {
+                            confirmToast.parentNode.removeChild(confirmToast);
+                        }
+                    }, 300);
+                }
+            }
+
+            toggleTask(taskId) {
+                const task = this.tasks.find(t => t.id === taskId);
+                task.completed = !task.completed;
+                this.saveTasks();
+                this.renderTasks();
+                this.updateStats();
+            }
+
+            getFilteredTasks() {
+                let filtered = [...this.tasks];
+                
+                switch(this.currentFilter) {
+                    case 'pending':
+                        filtered = filtered.filter(t => !t.completed);
+                        break;
+                    case 'completed':
+                        filtered = filtered.filter(t => t.completed);
+                        break;
+                    case 'high':
+                        filtered = filtered.filter(t => t.priority === 'high' && !t.completed);
+                        break;
+                }
+                
+                return filtered;
+            }
+
+            searchTasks(query) {
+                const filtered = this.getFilteredTasks();
+                const results = filtered.filter(task => 
+                    task.title.toLowerCase().includes(query.toLowerCase()) ||
+                    (task.description && task.description.toLowerCase().includes(query.toLowerCase()))
+                );
+                this.renderTasksList(results);
+            }
+
+            sortTasks(sortBy) {
+                this.renderTasks(sortBy);
+            }
+
+            isOverdue(task) {
+                if (!task.dueDate || task.completed) return false;
+                return new Date(task.dueDate) < new Date();
+            }
+
+            renderTasks(sortBy = 'newest') {
+                let tasks = this.getFilteredTasks();
+
+                switch(sortBy) {
+                    case 'oldest':
+                        tasks.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                        break;
+                    case 'priority':
+                        const priorityOrder = { high: 0, medium: 1, low: 2 };
+                        tasks.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+                        break;
+                    case 'dueDate':
+                        tasks.sort((a, b) => {
+                            if (!a.dueDate) return 1;
+                            if (!b.dueDate) return -1;
+                            return new Date(a.dueDate) - new Date(b.dueDate);
+                        });
+                        break;
+                    default: // newest
+                        tasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                }
+
+                this.renderTasksList(tasks);
+            }
+
+            renderTasksList(tasks) {
+                const tasksList = document.getElementById('tasksList');
+
+                if (tasks.length === 0) {
+                    tasksList.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-clipboard-list"></i>
+                            <h3>No tasks found</h3>
+                            <p>Create your first task to get started!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                tasksList.innerHTML = tasks.map(task => `
+                    <div class="task-item ${task.completed ? 'completed' : ''}" 
+                         draggable="true" 
+                         data-task-id="${task.id}">
+                        <div class="task-checkbox ${task.completed ? 'checked' : ''}" 
+                             onclick="taskManager.toggleTask(${task.id})">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="task-content">
+                            <div class="task-title">${task.title}</div>
+                            <div class="task-meta">
+                                <span class="task-priority ${task.priority}">${task.priority}</span>
+                                ${task.dueDate ? `
+                                    <span class="task-date ${this.isOverdue(task) ? 'text-danger' : ''}">
+                                        <i class="fas fa-calendar"></i>
+                                        ${new Date(task.dueDate).toLocaleDateString()}
+                                        ${this.isOverdue(task) ? '<i class="fas fa-exclamation-circle"></i>' : ''}
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="task-actions">
+                            <button class="task-action-btn edit" onclick="taskManager.openModal(${task.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="task-action-btn delete" onclick="taskManager.deleteTask(${task.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                this.setupDragAndDrop();
+            }
+
+            setupDragAndDrop() {
+                const taskItems = document.querySelectorAll('.task-item');
+                
+                taskItems.forEach(item => {
+                    item.addEventListener('dragstart', () => {
+                        item.classList.add('dragging');
+                    });
+
+                    item.addEventListener('dragend', () => {
+                        item.classList.remove('dragging');
+                        this.saveDraggedOrder();
+                    });
+                });
+
+                const tasksList = document.getElementById('tasksList');
+                tasksList.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const dragging = document.querySelector('.dragging');
+                    const afterElement = this.getDragAfterElement(tasksList, e.clientY);
+                    
+                    if (afterElement == null) {
+                        tasksList.appendChild(dragging);
+                    } else {
+                        tasksList.insertBefore(dragging, afterElement);
+                    }
+                });
+            }
+
+            getDragAfterElement(container, y) {
+                const draggableElements = [...container.querySelectorAll('.task-item:not(.dragging)')];
+
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+
+            saveDraggedOrder() {
+                const taskItems = document.querySelectorAll('.task-item');
+                const newOrder = [];
+                
+                taskItems.forEach(item => {
+                    const taskId = parseInt(item.dataset.taskId);
+                    const task = this.tasks.find(t => t.id === taskId);
+                    if (task) newOrder.push(task);
+                });
+
+                this.tasks = newOrder;
+                this.saveTasks();
+            }
+
+            updateStats() {
+                const total = this.tasks.length;
+                const completed = this.tasks.filter(t => t.completed).length;
+                const pending = total - completed;
+                const overdue = this.tasks.filter(t => this.isOverdue(t)).length;
+
+                document.getElementById('totalTasks').textContent = total;
+                document.getElementById('completedTasks').textContent = completed;
+                document.getElementById('pendingTasks').textContent = pending;
+                document.getElementById('overdueTasks').textContent = overdue;
+                document.getElementById('filterAllCount').textContent = total;
+                document.getElementById('filterPendingCount').textContent = pending;
+                document.getElementById('filterCompletedCount').textContent = completed;
+                document.getElementById('filterHighCount').textContent = 
+                    this.tasks.filter(t => t.priority === 'high' && !t.completed).length;
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <div class="toast-body">${message}</div>
+            `;
+            
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    container.removeChild(toast);
+                }, 300);
+            }, 3000);
+
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+        }
+
+        const taskManager = new TaskManager();
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', () => {
+            document.body.style.background = 
+                document.body.style.background.includes('667eea') 
+                ? 'linear-gradient(135deg, #1A1A2E 0%, #0F0F1E 100%)'
+                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        });
+    </script>
+</body>
+</html>
